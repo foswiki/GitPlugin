@@ -1,0 +1,75 @@
+---+++ Directory structure preparation
+
+   * The directory structure concerns the following 2 directories: root/, data/ and pub/; data/ and pub/ should have the same parent directory.
+
+Typically, their structure is as below:
+   $ =root= is the root of the foswiki install
+      $ =data=: =&lt;webs&gt;=
+      $ =pub=: =&lt;webs&gt;=
+
+---++++ When using standard Foswiki directory structure
+   * Rely =.gitignore= file to isolate synchronized webs and out-of-sync webs (if you have out-sync webs)
+
+---++++ When using an independent Git directory structure (using soft link)
+   * In this directory structure, all data you want to synchronize are use the same directory as standard Foswiki structure, for example =Git/data/= and =Git/pub/=, and the Git repository must be installed in =Git/=.
+   * Other data are in the standard Foswiki directory structure, and use soft link to link the synchronous data. See below for example.
+
+=root= &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&lt;GitRoot&gt;=
+
+&nbsp;&nbsp;&nbsp; =data= &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =data=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&lt;web1&gt;= ---soft link---&gt; =&lt;web1&gt;=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&lt;web2&gt;=
+
+&nbsp;&nbsp;&nbsp; =pub= &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =pub=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&lt;web1&gt;= ---soft link---&gt; =&lt;web1&gt;=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =&lt;web2&gt;=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =.git=
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; =.gitignore=
+
+==Notes:==
+   1 The synchronous data must use the structure the same as standard Foswiki structure, for example, =Git/data/web/topic= and =Git/pub/web/topic/attachment=. It is recommend to use =mv= in shell to move the data, which need be synchronized from the standard Foswiki directory to the independent Git directory.
+   1 The Git repository must be installed in the parent directory of data/ and pub/ in the independent Git directory.
+   1 To support soft link when view attachment, please modify the Foswiki configuration in apache like below:
+
+&lt;Directory "/var/www/html/foswiki/pub"&gt;
+
+        ==Options !FollowSymLinks== &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ##modify this option.
+
+        !AllowOverride Limit
+
+        Allow from all
+
+        Deny from env=blockAccess
+
+
+        php_admin_flag engine off
+
+        !AddType text/plain .shtml .php .php3 .phtml .phtm .pl .py .cgi
+
+&lt;/Directory&gt;
+
+---++++ Notes
+   1 Every site can use different directory structure.
+   1 Some operations are different, please see chapters below.
+
+If you want to test the special key when use git command in shell, please do like these step:
+
+1.Create a script file like as follows, you should modify the private key path as it was. Of course, you should assign executable right to it.
+
+2.The plugin will create a script =git_ssh_script.sh=, used for Git using SSH. The content of file will be like this:
+
+=#!/bin/sh=
+
+=ssh -i /var/www/html/foswiki/lib/Foswiki/Plugins/GitPlugin/id_rsa.private.key "$@"=
+
+3.perform this command in shell. The string in command is the path where the script file is.
+
+=$export GIT_SSH='/var/www/html/foswiki/lib/Foswiki/Plugins/GitPlugin/git_ssh_script.sh'=
+
+4.You can use " git fetch xxx ".

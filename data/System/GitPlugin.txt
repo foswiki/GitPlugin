@@ -1,0 +1,314 @@
+---+!! GitPlugin
+<!--
+   * Set SHORTDESCRIPTION = %$SHORTDESCRIPTION%
+-->
+
+%TOC%
+
+---++ Foswiki on Git Overview
+
+The goal of this plugin is to enable a distributed operation of
+Foswiki. Multiple Foswiki installations may share some or all of their
+webs such that these webs are synchronized with each other.
+
+Synchronization of webs is achieved by leveraging git as the
+repository for Foswiki topics. 
+
+Git is a distributed version control system. This plugin uses Git as
+the Store module, replacing the standard RCS module. The store module
+controls the storage and revision control of topics and attachments.
+Git will then also distribute any topic and attachment under its
+control to all other synchronized Foswiki installations.
+
+Connection between each site is through =ssh=, a secure mode of
+accessing remote sites.
+
+In the current version, modes of operations are supported:
+Distributed Mode and Centralized Mode.
+
+---++ Distributed Mode
+
+<img width="552" alt="CentralizedMode.jpg" src="%ATTACHURL%/CentralizedMode.jpg" height="357" />
+
+All sites are symmetrical in this mode. Each site has to fetch the
+content of all other and merge with its own content.
+
+---++ Centralized Mode
+
+<img width="550" alt="DistributedMode.jpg" src="%ATTACHURL%/DistributedMode.jpg" height="325" />
+
+A central repository is used to store a copy of each site.
+Each site then fetches the content of the other sites from the 
+central repository and merges with its own content. Each site
+pushes its content to the central repository.
+
+The centralized mode is advantageous if the sites cannot connect
+directly to each other, e.g., if they maintain firewalls that do not
+allow ssh connections. In this mode, the individual sites only need to
+be able to connect to the central repository.
+
+---++ Installation
+
+The installation of the %TOPIC% primarily involves setup of the git
+repositories and the communication environment, which is described in
+this section.
+
+The following terminology is used throughout these instructions.
+   * =&lt;localserver&gt;= refers to the local Foswiki server. A user account =&lt;localuser&gt;= is assumed to exist.
+   * =&lt;remoteserver&gt;= refers to any remote Foswiki server. A user account =&lt;remoteuser&gt;= is assumed to exist.
+   * =&lt;centralserver&gt;= refers to the central repository server. A user account =&lt;centraluser&gt;= is assumed to exist.
+   * =foswiki= refers to the parent directory of the =data= and =pub= directories of each Foswiki installation.
+   * =&lt;localname&gt;= refers to an arbitrary name given to the local repository.
+   * =&lt;remotename&gt;= refers to an arbitrary name given to a remote repository.
+   * =&lt;centralname&gt;= refers to an arbitrary name given to the central repository.
+   * =&lt;centralrepo&gt;= refers to the path to the central repository.
+   * =&lt;remoterepo&gt;= refers to the path to the remote repository.
+   * =&lt;localrepo&gt;= refers to the path to the local repository.
+
+
+
+To begin, Foswiki should be installed as normal. Make sure it works well
+before attempting to install %TOPIC%. It is assumed that at each site,
+the user indicated above, such as =&lt;localuser&gt;= will execute
+Foswiki.
+
+These instructions assume a linux distribution for the Foswiki server. 
+
+---+++ SSH Installation
+
+=ssh= public and private key should be prepared for each server. For
+example, you can log in to =&lt;remoteserver&gt;= as
+=&lt;remoteuser&gt;= from =&lt;localuser&gt;@&lt;localserver&gt;=
+without a password. Keep the private key in a directory where
+=&lt;localuser&gt;= has the right to access it, but ensure that the
+permissions satisfy the requirements of =ssh=.
+
+<blockquote>
+<pre>
+=&lt;localuser&gt;@&lt;localserver&gt;$ssh-keygen -t rsa
+</pre>  ~/.ssh/id_rsa is your private key, ~/.ssh/id_rsa.pub is your public key
+<pre>
+&lt;localuser&gt;@&lt;localserver&gt;$ chmod 700 ~/.ssh
+&lt;localuser&gt;@&lt;localserver&gt;$ chmod 600 ~/.ssh/id_rsa
+</pre>
+Transfer =&lt;localpublickey&gt;= to =&lt;remoteserver&gt;=.
+<pre>
+&lt;remoteuser&gt;@&lt;remoteserver&gt;$cat &lt;localpublickey&gt; &gt;&gt; ~/.ssh/authorized_keys
+&lt;remoteuser&gt;@&lt;remoteserver&gt;$ chmod 700 ~/.ssh
+&lt;remoteuser&gt;@&lt;remoteserver&gt;$ chmod 600 ~/.ssh/authorized_keys
+</pre>
+Now you should be able to login in to =&lt;remoteserver&gt;= as
+=&lt;remoteuser&gt;= from
+=&lt;localuser&gt;@&lt;localserver&gt;=. Perform these steps for each
+pair of servers that need to synchronize with each other.
+</blockquote>
+
+---+++ Git Installation
+
+Install git on each server. For some linux distributions, git is not
+in the standard repository. For example, for CentOS, one has to
+install the EPEL packages first. 
+
+<blockquote>
+<pre>
+rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/i386/epel-release-5-3.noarch.rpm
+</pre>
+To install Git from the source:
+   * Download the latest version of git (currently http://kernel.org/pub/software/scm/git/git-1.7.1.1.tar.gz)
+   * Uncompress download and cd to the installation directory.
+   * Use =./configure=, =make=, and =make install= to install git
+Install git from binary distribution:
+   * Fedora/CentOS: =yum -y install git=
+   * Unbuntu/Debian: =apt-get install git=
+</blockquote>
+
+After git has been installed, check the version using =git --version=. Ensure the version is at least 1.7
+
+---++++ Distributed Mode
+
+Perform these steps for all remote sites. &lt;remotename&gt; should be
+different for each remote server.
+<blockquote>
+<pre>
+cd ./foswiki
+git init
+git config user.email &ldquo;&lt;localusermail&gt;&rdquo;
+git config user.name &ldquo;&lt;localusername&gt;&rdquo;
+git remote add &lt;remotename&gt;&lt;remoteuser&gt;@&lt;remoteserver&gt;:&lt;remoterepo&gt;
+</pre>
+</blockquote>
+
+---++++ Centralized Mode
+
+Perform the following steps on the central server. &lt;repository&gt;
+is an arbitrary directory where the central repository is located.
+<blockquote>
+<pre>
+cd &lt;repository&gt;
+git init &ndash;bare --shared
+</pre>
+</blockquote>
+
+Perform the followikng steps in each (local and remote) Foswiki
+installation. &lt;localname&gt; should be different for each remote
+server. 
+<blockquote>
+<pre>
+cd ./foswiki
+git init
+git config user.email &ldquo;&lt;localusermail&gt;&rdquo;
+git config user.name &ldquo;&lt;localusername&gt;&rdquo;
+git remote add &lt;centralname&gt; &lt;centraluser&gt;@&lt;centralserver&gt;:&lt;centralrepo&gt;
+</pre>
+</blockquote>
+
+---++++ Check installation
+
+After these steps were done in all sites, you can test that these
+configrations are working by executing
+<blockquote><pre>
+cd ./foswiki
+git fetch &lt;centralname&gt;
+</pre></blockquote>
+for centralized installation; use = &lt;centralname&gt;= for distributed installation. If no warning or error surfaces, continue.
+Otherwise, check the configuration, as indicated by the warning or error.
+You can get more information how to install git on http://git-scm.com/.
+
+---++++ Repository initialization
+
+Create a file =.gitignore= to ignore files that should not be synchronized.
+
+<blockquote><pre>
+git status
+</pre></blockquote>
+will show all untracked files. Now create the =.gitignore= file from
+these. A sample file has been provided in =lib/Foswiki/Plugins/GitPlugin/dot.ignore=.
+
+If you want to remove some file =&lt;file name&gt;= or directory
+=&lt;directory name&gt;= from the repository, 
+append their path to the =.gitignore= file and then use the following
+to remove them from the git repository:
+<blockquote><pre>
+git rm --cache &lt;file name&gt;
+git rm -rf --cache &lt;directory name&gt;
+git commit -m&lt;comments&gt;
+</pre></blockquote>
+
+---+++ Configration Editor
+
+<blockquote>
+   * Open http://&lt;localserver&gt;/foswiki/bin/configure in your browser.
+   * Select =Git= as the !StoreImpl mode in Store settings. If you can't select it, please view the notes below.
+   * Some items should be filled in the &ldquo;General git settings&rdquo; section.
+      * ={Git}{mergeMode}=: Select centralized or distributed correspoding to the intended mode of operation, matching the git installation.
+      * ={Git}{Path}=: The path of the git executable. Usually, the path is =/usr/bin/git=.
+      * ={Git}{SSHKey}=: Specify the path where the private key stored.
+      * ={Git}{remoteName}=: Comma-separated list of remote sites names (referred to as =&lt;nickname&gt;= during setup above. 
+      * ={Git}{localName}=: Name of the local repository.
+      * ={Git}{backupReposname}=: Name of the central repository.
+      * ={Git}{outSync}=: Comma-separated list of webs which should not be synchronized and have not been added to the git repository (see the section "Selection of Webs not to be synchronized" below).
+      * ={Git}{root}=: The path to the git repository; must be the parent directory of the =data/= and =pub/= directories.
+</blockquote>
+
+---++++ Selection of Webs not to be synchronized
+
+Any web listed in the ={Git}{outSync}= configuration parameter will
+not be synchronized. These webs use RCS as the repository as in
+standard Foswiki. The list of webs excluded from synchronization should
+be consistent between sites.
+
+<blockquote>
+When you want to create an out-of-sync web 
+   1 Add the name of the web to =.gitignore=
+   1 Add the name of the web to ={Git}{outSync}=
+   1 Create new web
+
+When you want to change a synchronized web to an out-of-sync web
+   1 Add the web name to =.gitignore= file and ={Git}{outSync}=
+   1 =git rm -rf --cache &lt;directory&gt;= removes the web from the git repository. (remember to remove the web both in data/ and pub/)
+
+When you want to change an out-of-sync web to be synchronized
+   1 Remove the web name from =.gitignore= file and ={Git}{outSync}=
+   1 =git add .=
+   1 =git commit -m"&lt;comments&gt;"=
+</blockquote>
+
+Notes:
+   1 Topics and attachments in out-of-sync webs can only be moved to the out-sync webs and topics.
+   1 Topics and attachments in synchronized webs can only be moved to the synchronized webs and topics.
+   1 When deleting a topic or attachment from a synchronized web, it will be permanently deleted and not moved to the Trash web.
+
+---+++ Repository preparation
+
+To guarantee the local initial repository is based on the current
+revision (to avoid conflicts which maybe not easy to be resolved) be
+sure to follow these steps.
+
+If this is the first Foswiki installation to push to the server
+<blockquote>
+   1 Use =git add .= and =git commit -m"&lt;comments&gt;"= to initialize the local repository.
+   1 If centralized mode is used, execute =git push &lt;centralname&gt; master:&lt;localname&gt;= to upload repository.
+   1 If distributed mode is used, do nothing.
+</blockquote>
+
+If this is a Foswiki installation that is to be added to an existing
+setup
+<blockquote>
+   1 The directories which will be synchronized should be moved out of the =foswiki= directory.
+   1 If centralized mode is used
+      1 execute =git fetch &lt;centralname&gt;= to fetch the remote repository
+      1 execute =git merge &lt;centralname&gt;/&lt;remotename&gt;= for each remote site
+   1 If distributed mode is used, for each remote site
+      1 execute =git fetch &lt;remotename&gt;= to fetch the remote repository.
+      1 execute =git merge master/&lt;remotename&gt;=
+   1 Move local webs to by synchronized into the =foswiki= directory
+</blockquote>
+
+
+---+++ Synchronization Setup
+
+For web-based synchronization, create a topic with content
+=%<nop>GITMERGE{""}%=. Synchronization can be triggered either
+manually, by viewing this topic, or automatically, by executing a
+=cron= hob.
+
+To invoke synchronization via =cron=, edit the =crontab= file for the
+=&lt;localuser&gt;= and append
+<pre>
+*/1 * * * * cd /path/to/foswiki/bin; ./view /Foswiki.AutoMerge
+</pre>
+where =/path/to/foswiki/= is the path to the local Foswiki installation,
+and =AutoMerge= is the topic with the =GITMERGE= tag. The above entry
+will perform synchronization every minute. Adjust the interval time as
+needed. 
+
+---++ Limitations
+   1 Ensure that the Foswiki user can access the =ssh= private key.
+   1 Because the Plugin needs to modify the !LocalSite.cfg, if this file has already been created, =$Foswiki::cfg{StoreImpl}= needs to be modified in the file =lib/LocalSite.cfg= directly. Alternatively, delete this file and revisit =configure=.
+   1 Conflicts caused by renaming or moving webs are not resolved. Consequentially, and ordinary user is not allowed to rename webs. Such must be performed by an administrator who should then update local repository with the latest content from the other sites and then perform the renaming.
+   1 After merging, the revision history may be changed.
+   1 The web configured as =$Foswiki::cfg{Git}{LocalTrashWebName}= will serve as the Trash web for out-of-sync webs. The put back operation is not supported. This web should be added to =.gitignore=.
+
+
+---++ Installation Instructions
+%INSTALL_INSTRUCTIONS%
+
+---++ Info
+
+|  Author: | <table borderwidth=0><tr><td valign="top"> Proposed and initially developed as class project for Foswiki:Main/ThomasWeigert 's CS397 "Software Systems Development" at Missouri University of Science and Technology, Fall 2009 by Joshua Bohde, Afik Cohen, Peter Hoeft, Jeff Arneson, Jessica Egler, Kenneth Perry, Steven Wallace, and further enhanced by Yao Zhou and Brute Ma of !UniqueSoft LLC.</td><td><img src="%ATTACHURL%/Logo-Green-web_w.jpg"></td></tr></table> |
+|  License: | GPL ([[http://www.gnu.org/copyleft/gpl.html][GNU General Public License]]) |
+|  Release: | %$RELEASE% |
+|  Version: | %$VERSION% |
+|  Change History: | <!-- versions below in reverse order --> |
+|  26 Nov 2010: | Ported to Foswiki |
+|  01 May 2010: | Initial release |
+|  Foswiki Dependency: | $Foswiki::Plugins::VERSION 1.1 |
+|  CPAN Dependencies: | none |
+|  Other Dependencies: | Git 1.7 |
+|  Perl Version: | 5.005 |
+|  Plugin Home: | http://Foswiki.org/cgi-bin/view/Plugins/%TOPIC% |
+|  Feedback: | http://Foswiki.org/cgi-bin/view/Plugins/%TOPIC%Dev |
+
+%META:FILEATTACHMENT{name="DistributedMode.jpg" attachment="DistributedMode.jpg" attr="h" comment="Saved by install script" date="1278404955" size="73824" stream="GLOB(0xa48d768)" tmpFilename="/tmp/XCbNVCbhbc" user="BaseUserMapping_333" version="1"}%
+%META:FILEATTACHMENT{name="CentralizedMode.jpg" attachment="CentralizedMode.jpg" attr="h" comment="Saved by install script" date="1278404955" size="87148" stream="GLOB(0xa46c498)" tmpFilename="/tmp/8ajqNiJ6sC" user="BaseUserMapping_333" version="1"}%
+%META:TOPICMOVED{by="BaseUserMapping_333" date="1278036093" from="Sandbox.GitPlugin" to="Foswiki.GitPlugin"}%

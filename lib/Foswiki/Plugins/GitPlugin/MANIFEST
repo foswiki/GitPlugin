@@ -1,0 +1,14 @@
+!noci
+bin/gitop 0555
+data/System/GitPlugin.txt 0644
+data/System/GitPluginDirectories.txt 0644
+lib/Foswiki/Plugins/GitPlugin.pm 0444
+lib/Foswiki/Plugins/GitPlugin/Config.spec 0444
+lib/Foswiki/Plugins/GitPlugin/GitAction.pm 0444
+lib/Foswiki/Plugins/GitPlugin/GitRun.pm 0444
+lib/Foswiki/Plugins/GitPlugin/dot.gitignore 0644
+lib/Foswiki/Plugins/GitPlugin/git.pl 0555
+lib/Foswiki/Store/Git.pm 0444
+pub/System/GitPlugin/CentralizedMode.jpg 0644
+pub/System/GitPlugin/DistributedMode.jpg 0644
+pub/System/GitPlugin/Logo-Green-web_w.jpg 0644
